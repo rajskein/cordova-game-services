@@ -465,14 +465,16 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
             @Override
             public void run() {
 
-                if (gameHelper.isSignedIn()) {
-                    Intent achievementsIntent = Games.Achievements.getAchievementsIntent(gameHelper.getApiClient());
-                    cordova.startActivityForResult(plugin, achievementsIntent, ACTIVITY_CODE_SHOW_ACHIEVEMENTS);
-                    callbackContext.success();
-                } else {
-                    Log.w(LOGTAG, "executeShowAchievements: not yet signed in");
-                    callbackContext.error("executeShowAchievements: not yet signed in");
-                }
+                   TurnBasedMatch match = gameHelper.mTurnBasedMatch;
+            Game gam=match.getGame();
+
+            JSONObject matchJson = new JSONObject();
+            matchJson.put("mid", match.getMatchId());
+            matchJson.put("des", match.getDescription());
+            matchJson.put("rematch", match.canRematch());
+            matchJson.put("iconImageUrl", match.getStatus());
+
+            callbackContext.success(matchJson);
             }
         });
     }
