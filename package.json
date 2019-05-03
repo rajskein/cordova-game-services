@@ -25,11 +25,9 @@
     "services",
     "android",
     "users",
-    "leaderboard",
-    "achievements"
   ],
   "author": {
-    "name": "Raj",
+    "name": "Skein",
     "email": "rajamanickam.r@skeintech.com"
   },
   "license": "MIT"
