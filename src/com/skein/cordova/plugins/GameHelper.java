@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.berriart.cordova.plugins;
+package com.skein.cordova.plugins;
 
 import java.util.ArrayList;
 

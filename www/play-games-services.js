@@ -1,3 +1,4 @@
+cordova.define("cordova-plugin-play-games-services.PlayGamesServices", function(require, exports, module) {
 var exec = require('cordova/exec');
 var PLAY_GAMES_SERVICES = 'PlayGamesServices';
 
@@ -5,9 +6,8 @@ var PlayGamesServices = function () {
     this.name = PLAY_GAMES_SERVICES;
 };
 
-var actions = ['auth', 'signOut', 'isSignedIn',
-               'submitScore', 'submitScoreNow', 'getPlayerScore', 'showAllLeaderboards', 'showLeaderboard',
-               'unlockAchievement', 'unlockAchievementNow', 'incrementAchievement', 'incrementAchievementNow', 'showAchievements', 'showPlayer'];
+var actions = ['signIn', 'signOut', 'isSignedIn',
+                'autoMatch', 'showAchievements', 'showPlayer'];
 
 actions.forEach(function (action) {
     PlayGamesServices.prototype[action] = function (data, success, failure) {
@@ -35,3 +35,4 @@ actions.forEach(function (action) {
 });
 
 module.exports = new PlayGamesServices();
+});

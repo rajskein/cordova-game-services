@@ -1,4 +1,4 @@
-package com.berriart.cordova.plugins;
+package com.skein.cordova.plugins;
 
 import android.app.Activity;
 import android.content.Context;

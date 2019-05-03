@@ -10,8 +10,8 @@
     <author>Alberto Varela</author>
     <license>MIT</license>
     <keywords>google, play, game, cordova, android</keywords>
-    <repo>https://github.com/artberri/cordova-plugin-play-games-services.git</repo>
-    <issue>https://github.com/artberri/cordova-plugin-play-games-services/issues</issue>
+    <repo>https://github.com/kingemerald/cordova-game-services.git</repo>
+    <issue>https://github.com/kingemerald/cordova-games-services/issues</issue>
 
     <engines>
         <engine name="cordova" version=">=4.0.0" />
