@@ -18,7 +18,7 @@
     </engines>
 
     <js-module src="www/play-games-services.js" name="PlayGamesServices">
-        <clobbers target="window.plugins.playGamesServices" />
+        <clobbers target="cordova.plugins.playGamesServices" />
     </js-module>
 
     <!-- android -->

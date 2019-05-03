@@ -18,7 +18,7 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.berriart.cordova.plugins.GameHelper.GameHelperListener;
+import com.skein.cordova.plugins.GameHelper.GameHelperListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ApiException;
