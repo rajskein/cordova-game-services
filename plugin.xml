@@ -49,7 +49,7 @@
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
         </config-file>
 
-        <source-file src="src/com/skein/cordova/plugins/PlayGamesServices.java" target-dir="src/com/skien/cordova/plugins/" />
+        <source-file src="src/com/skein/cordova/plugins/PlayGamesServices.java" target-dir="src/com/skein/cordova/plugins/" />
         <source-file src="src/com/skein/cordova/plugins/BaseGameUtils.java" target-dir="src/com/skein/cordova/plugins/" />
         <source-file src="src/com/skein/cordova/plugins/BaseGameActivity.java" target-dir="src/com/skein/cordova/plugins/" />
         <source-file src="src/com/skein/cordova/plugins/GameHelper.java" target-dir="src/com/skein/cordova/plugins/" />
