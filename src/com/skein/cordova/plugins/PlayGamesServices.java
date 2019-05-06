@@ -53,30 +53,38 @@ import java.util.ArrayList;
 
 public class PlayGamesServices extends CordovaPlugin implements GameHelperListener {
 
-    private static final String LOGTAG = "SkeinGamesServices";
-
+    private static final String LOGTAG = "GamesServices";
     private static final String ACTION_SIGN_IN = "signIn";
     private static final String ACTION_SIGN_OUT = "signOut";
     private static final String ACTION_IS_SIGNEDIN = "isSignedIn";
     private static final String ACTION_AUTO_MATCH = "autoMatch";
     private static final String ACTION_SHOW_ACHIEVEMENTS = "showAchievements";
     private static final String ACTION_SHOW_PLAYER = "showPlayer";
-    private TurnBasedMultiplayerClient mTurnBasedMultiplayerClient = null;
-    private GameHelper gameHelper;
+
     private static final int RC_SIGN_IN = 9001;
     final static int RC_SELECT_PLAYERS = 10000;
-  final static int RC_LOOK_AT_MATCHES = 10001;
-    private CallbackContext authCallbackContext;
-    private int googlePlayServicesReturnCode;
+    final static int RC_LOOK_AT_MATCHES = 10001;
+
+
+    private TurnBasedMultiplayerClient mTurnBasedMultiplayerClient = null;
     private GoogleSignInClient mGoogleSignInClient = null;
     private GoogleSignInAccount mGoogleSignInAccount=null;
-  public TurnBasedMatch mMatch;
-  private String mDisplayName;
-  private String mPlayerId;
-  private AlertDialog mAlertDialog;
-  public GameTurn mTurnData;
+    private InvitationsClient mInvitationsClient = null;
+
+     private String mDisplayName;
+     private String mPlayerId;
+
+     private GameHelper gameHelper;
+  JSONObject dataObj=null;
+
+     public TurnBasedMatch mMatch;
+     public GameTurn mTurnData;
+     private AlertDialog mAlertDialog;
+     private int googlePlayServicesReturnCode;
+
   private CallbackContext callback = null;
-  private InvitationsClient mInvitationsClient = null;
+  private CallbackContext authCallbackContext;
+
   @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
@@ -102,8 +110,9 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
 
     @Override
     public boolean execute(String action, JSONArray inputs, CallbackContext callbackContext) throws JSONException {
+      Log.d(LOGTAG, "==== options\n" + inputs.toString());
 
-        JSONObject options = inputs.optJSONObject(0);
+      JSONObject options = inputs.optJSONObject(0);
       callback=callbackContext;
         if (gameHelper == null) {
            JSONObject googlePlayError = new JSONObject();
@@ -143,6 +152,7 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
       cordova.startActivityForResult(commandContext,singingIntent,RC_SIGN_IN);
     }
 
+
     private void executeSignOut(final CallbackContext callbackContext) {
       final PlayGamesServices commandContext = this;
         cordova.getActivity().runOnUiThread(new Runnable() {
@@ -155,34 +165,52 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     }
 
     private void executeIsSignedIn(final JSONObject options,final CallbackContext callbackContext) {
-      try {
-        JSONObject dataObj= options.getJSONObject("data");
-        android.widget.Toast.makeText(
-          cordova.getActivity(),
-          "auto match start  "+dataObj.getString("s")
-          , Toast.LENGTH_SHORT)
-          .show();
-      } catch (JSONException e) {
-        e.printStackTrace();
-      }
+//      try {
+//         dataObj= options.getJSONObject("data");
+//        android.widget.Toast.makeText(
+//          cordova.getActivity(),
+//          "1 match data   You are game in as  "+ dataObj.toString()
+//          , Toast.LENGTH_SHORT)
+//          .show();
+//      } catch (JSONException e) {
+//        e.printStackTrace();
+//      }
 
       cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
+              mTurnData = new GameTurn();
+              // Some basic turn data
 
-                  String myParticipantId = mMatch.getParticipantId(mPlayerId);
-
-                  mTurnBasedMultiplayerClient.takeTurn(mMatch.getMatchId(),
-                    mTurnData.persist(), myParticipantId)
-                    .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
-                      @Override
-                      public void onSuccess(TurnBasedMatch turnBasedMatch) {
-                        updateMatch(turnBasedMatch);
-                      }
-                    })
-                    .addOnFailureListener(createFailureListener("There was a problem taking a turn!"));
+              try {
+                mTurnData.data = options.getJSONObject("data") ;
+              } catch (JSONException e) {
+                e.printStackTrace();
+              }
+              mTurnData.turnCounter += 1;
 
 
+              String nextParticipantId = getNextParticipantId();
+
+
+              mTurnBasedMultiplayerClient.takeTurn(mMatch.getMatchId(),
+                mTurnData.persist(), nextParticipantId)
+                .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
+                  @Override
+                  public void onSuccess(TurnBasedMatch turnBasedMatch) {
+                   // onUpdateMatch(turnBasedMatch);
+
+                   boolean isDoingTurn = (turnBasedMatch.getTurnStatus() == TurnBasedMatch.MATCH_TURN_STATUS_MY_TURN);
+
+                    if (isDoingTurn) {
+                      updateMatch(turnBasedMatch);
+                      return;
+                    }
+                  }
+                })
+                .addOnFailureListener(createFailureListener("There was a problem taking a turn!"));
+
+              mTurnData = null;
 
 
             }
@@ -199,41 +227,23 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
       TurnBasedMatchConfig turnBasedMatchConfig = TurnBasedMatchConfig.builder()
         .setAutoMatchCriteria(autoMatchCriteria).build();
 
-      //  showSpinner();
-      android.widget.Toast.makeText(
-        cordova.getActivity(),
-        "auto match start  "
-        , Toast.LENGTH_SHORT)
-        .show();
       // Start the match
       mTurnBasedMultiplayerClient.createMatch(turnBasedMatchConfig)
         .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
           @Override
           public void onSuccess(TurnBasedMatch turnBasedMatch) {
              onInitiateMatch(turnBasedMatch);
-            android.widget.Toast.makeText(
-              cordova.getActivity(),
-              "auto match started  "
-              , Toast.LENGTH_SHORT)
-              .show();
           }
         })
         .addOnFailureListener(createFailureListener("There was a problem creating a match!"));
     }
 
     private void executeShowAchievements(final CallbackContext callbackContext) {
-
         final PlayGamesServices plugin = this;
-
-        cordova.getActivity().runOnUiThread(new Runnable() {
+       /* cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-              try {
-                android.widget.Toast.makeText(
-                  cordova.getActivity(),
-                  "achements  "
-                  , Toast.LENGTH_SHORT)
-                  .show();
+              try {*/
                 mTurnBasedMultiplayerClient.getSelectOpponentsIntent(1, 1, true)
                   .addOnSuccessListener(new OnSuccessListener<Intent>() {
                     @Override
@@ -242,24 +252,23 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
                     }
                   })
                   .addOnFailureListener(createFailureListener("fail"));
-
-              }
+            /*  }
                 catch(Exception e) {
                   Log.w(LOGTAG, "executeShowPlayer: Error providing player data", e);
                   callbackContext.error("executeShowPlayer: Error providing player data");
                 }
             }
-        });
+        });*/
     }
+
 
     private void executeShowPlayer(final CallbackContext callbackContext) {
         Log.d(LOGTAG, "executeShowPlayer");
       final PlayGamesServices plugin = this;
-        cordova.getActivity().runOnUiThread(new Runnable() {
+       /* cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-
-                try {
+                try {*/
                   mTurnBasedMultiplayerClient.getInboxIntent()
                     .addOnSuccessListener(new OnSuccessListener<Intent>() {
                       @Override
@@ -268,22 +277,18 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
                       }
                     })
                     .addOnFailureListener(createFailureListener("fail"));
-                }
+               /* }
                 catch(Exception e) {
                     Log.w(LOGTAG, "executeShowPlayer: Error providing player data", e);
                     callbackContext.error("executeShowPlayer: Error providing player data");
                 }
             }
-        });
+        });*/
     }
 
   private void onInitiateMatch(TurnBasedMatch match) {
+   // dismissSpinner();
 
-    android.widget.Toast.makeText(
-      cordova.getActivity(),
-      "You are game in as  "+match.getDescription()
-      , Toast.LENGTH_SHORT)
-      .show();
     if (match.getData() != null) {
       // This is a game that has already started, so I'll just start
       updateMatch(match);
@@ -293,28 +298,33 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     startMatch(match);
   }
 
+
   public void startMatch(TurnBasedMatch match) {
+
     mTurnData = new GameTurn();
     // Some basic turn data
-    mTurnBasedMultiplayerClient.registerTurnBasedMatchUpdateCallback(mMatchUpdateCallback);
+JSONObject obj= new JSONObject();
 
-    if(mTurnData.data!=0) {
-      mTurnData.data = mTurnData.data+1;
-    }
+      mTurnData.data = obj;
+    mTurnData.turnCounter = 0;
     mMatch = match;
 
     String myParticipantId = mMatch.getParticipantId(mPlayerId);
-    
+
     mTurnBasedMultiplayerClient.takeTurn(match.getMatchId(),
       mTurnData.persist(), myParticipantId)
       .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
         @Override
         public void onSuccess(TurnBasedMatch turnBasedMatch) {
+
+
           updateMatch(turnBasedMatch);
         }
       })
       .addOnFailureListener(createFailureListener("There was a problem taking a turn!"));
   }
+
+
   public String getNextParticipantId() {
 
     String myParticipantId = mMatch.getParticipantId(mPlayerId);
@@ -343,18 +353,35 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     }
   }
 
+  public void onUpdateMatch(TurnBasedMatch match) {
+  //  dismissSpinner();
+
+    if (match.canRematch()) {
+     // askForRematch();
+    }
+
+
+
+   // setViewVisibility();
+  }
+
   public void updateMatch(TurnBasedMatch match) {
     mMatch = match;
 
+    Log.d(LOGTAG, "==== options turnMatch\n" + mMatch.toString());
+
     int status = match.getStatus();
     int turnStatus = match.getTurnStatus();
+    Log.d(LOGTAG, "==== options turnMatch\n" + status + "trun" + turnStatus);
 
 
     android.widget.Toast.makeText(
       cordova.getActivity(),
-      "You are game in as  "+match.getData().toString()
+      "2 You are game in as  "+match.getData().toString()
       , Toast.LENGTH_SHORT)
       .show();
+    Log.d(LOGTAG, "==== options match getdata\n" + match.getData().toString());
+
     switch (status) {
       case TurnBasedMatch.MATCH_STATUS_CANCELED:
         android.widget.Toast.makeText(
@@ -409,60 +436,119 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     // OK, it's active. Check on turn status.
     switch (turnStatus) {
       case TurnBasedMatch.MATCH_TURN_STATUS_MY_TURN:
-        mTurnData = GameTurn.unpersist(mMatch.getData());
+        JSONObject obj = GameTurn.unpersist(mMatch.getData());
         //setGameplayUI();
-        PluginResult result = new PluginResult(PluginResult.Status.OK, "your turn hura");
+
+
+        PluginResult result = new PluginResult(PluginResult.Status.OK,obj );
         result.setKeepCallback(true);
         callback.sendPluginResult(result);
-        String nextParticipantId = getNextParticipantId();
-        android.widget.Toast.makeText(
-          cordova.getActivity(),
-          "Its ur turn!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"+nextParticipantId
-          , Toast.LENGTH_SHORT)
-          .show();
-
-
+       // String nextParticipantId = getNextParticipantId();
         return;
       case TurnBasedMatch.MATCH_TURN_STATUS_THEIR_TURN:
         // Should return results.
-        showWarning("Alas...", "It's not your turn.");
+       // showWarning("Alas...", "It's not your turn.");
         PluginResult result1 = new PluginResult(PluginResult.Status.OK, "your opponant turn hura");
         result1.setKeepCallback(true);
         callback.sendPluginResult(result1);
-        android.widget.Toast.makeText(
-          cordova.getActivity(),
-          "It's not your turn."
-          , Toast.LENGTH_SHORT)
-          .show();
         break;
       case TurnBasedMatch.MATCH_TURN_STATUS_INVITED:
-        showWarning("Good inititative!",
-          "Still waiting for invitations.\n\nBe patient!");
         android.widget.Toast.makeText(
           cordova.getActivity(),
-          "Still waiting for invitations.\n\nBe patient!"
+          "Still waiting for i"
           , Toast.LENGTH_SHORT)
           .show();
+        //showWarning("Good inititative!",
+          //"Still waiting for invitations.\n\nBe patient!");
     }
-
     mTurnData = null;
-
    // setViewVisibility();
   }
 
 
 
+
+
+  public void showWarning(String title, String message) {
+    AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(cordova.getActivity());
+
+    // set title
+    alertDialogBuilder.setTitle(title).setMessage(message);
+
+    // set dialog message
+    alertDialogBuilder.setCancelable(false).setPositiveButton("OK",
+      new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int id) {
+          // if this button is clicked, close
+          // current activity
+        }
+      });
+
+    // create alert dialog
+    mAlertDialog = alertDialogBuilder.create();
+    mAlertDialog.show();
+  }
+    @Override
+    public void onSignInFailed() {
+        authCallbackContext.error("SIGN IN FAILED");
+    }
+
+    @Override
+    public void onSignInSucceeded() {
+        authCallbackContext.success("SIGN IN SUCCESS");
+    }
+
+  private void onConnected(GoogleSignInAccount googleSignInAccount) {
+
+    mTurnBasedMultiplayerClient = Games.getTurnBasedMultiplayerClient(cordova.getActivity(), googleSignInAccount);
+    mInvitationsClient = Games.getInvitationsClient(cordova.getActivity(), googleSignInAccount);
+
+    Games.getPlayersClient(cordova.getActivity(), googleSignInAccount)
+      .getCurrentPlayer()
+      .addOnSuccessListener(
+        new OnSuccessListener<Player>() {
+          @Override
+          public void onSuccess(Player player) {
+            mDisplayName = player.getDisplayName();
+            mPlayerId = player.getPlayerId();
+          }
+        }
+      )
+      .addOnFailureListener(createFailureListener("There was a problem getting the player!"));
+
+    // Retrieve the TurnBasedMatch from the connectionHint
+    GamesClient gamesClient = Games.getGamesClient(cordova.getActivity(), googleSignInAccount);
+    gamesClient.getActivationHint()
+      .addOnSuccessListener(new OnSuccessListener<Bundle>() {
+        @Override
+        public void onSuccess(Bundle hint) {
+          if (hint != null) {
+            TurnBasedMatch match = hint.getParcelable(Multiplayer.EXTRA_TURN_BASED_MATCH);
+            if (match != null) {
+              updateMatch(match);
+            }
+          }
+        }
+      })
+      .addOnFailureListener(createFailureListener(
+        "There was a problem getting the activation hint!"));
+
+    mInvitationsClient.registerInvitationCallback(mInvitationCallback);
+    mTurnBasedMultiplayerClient.registerTurnBasedMatchUpdateCallback(mMatchUpdateCallback);
+  }
+
   private InvitationCallback mInvitationCallback = new InvitationCallback() {
+
+
     // Handle notification events.
     @Override
     public void onInvitationReceived(@NonNull Invitation invitation) {
-
       android.widget.Toast.makeText(
         cordova.getActivity(),
         "Invitation arrive from"+ invitation.getInviter().getDisplayName()
         , Toast.LENGTH_SHORT)
         .show();
-
     }
 
     @Override
@@ -483,7 +569,7 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
         "A match was updated."
         , Toast.LENGTH_SHORT)
         .show();
-
+      updateMatch(turnBasedMatch);
     }
 
     @Override
@@ -496,78 +582,17 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     }
   };
 
-  public void showWarning(String title, String message) {
-    AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(cordova.getActivity());
-
-    // set title
-    alertDialogBuilder.setTitle(title).setMessage(message);
-
-    // set dialog message
-    alertDialogBuilder.setCancelable(false).setPositiveButton("OK",
-      new DialogInterface.OnClickListener() {
-        @Override
-        public void onClick(DialogInterface dialog, int id) {
-          // if this button is clicked, close
-          // current activity
-        }
-      });
-
-    // create alert dialog
-    mAlertDialog = alertDialogBuilder.create();
-
-    // show it
-    mAlertDialog.show();
-  }
-    @Override
-    public void onSignInFailed() {
-        authCallbackContext.error("SIGN IN FAILED");
-    }
-
-    @Override
-    public void onSignInSucceeded() {
-        authCallbackContext.success("SIGN IN SUCCESS");
-    }
-
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        //gameHelper.onActivityResult(requestCode, resultCode, intent);
-
-
-        if (requestCode == RC_SIGN_IN) {
+           if (requestCode == RC_SIGN_IN) {
 
           Task<GoogleSignInAccount> task =
             GoogleSignIn.getSignedInAccountFromIntent(intent);
 
           try {
             GoogleSignInAccount account = task.getResult(ApiException.class);
-          //  onConnected(account);
-            mGoogleSignInAccount = account;
-            mTurnBasedMultiplayerClient = Games.getTurnBasedMultiplayerClient(cordova.getActivity(),account);
-            mInvitationsClient = Games.getInvitationsClient(cordova.getActivity(), account);
+            onConnected(account);
 
-            Games.getPlayersClient(cordova.getActivity(), account)
-              .getCurrentPlayer()
-              .addOnSuccessListener(
-                new OnSuccessListener<Player>() {
-                  @Override
-                  public void onSuccess(Player player) {
-
-                    mDisplayName = player.getDisplayName();
-                    mPlayerId = player.getPlayerId();
-
-
-                    PluginResult result = new PluginResult(PluginResult.Status.OK, mDisplayName);
-                    result.setKeepCallback(true);
-                    callback.sendPluginResult(result);
-                    android.widget.Toast.makeText(
-                      cordova.getActivity(),
-                      "You are logged in as  "+player.getDisplayName()
-                        , Toast.LENGTH_SHORT)
-                      .show();
-                  }
-                }
-              )
-              .addOnFailureListener(createFailureListener("There was a problem getting the player!"));
           } catch (ApiException apiException) {
             String message = apiException.getMessage();
             if (message == null || message.isEmpty()) {
@@ -623,17 +648,26 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
           } else {
             autoMatchCriteria = null;
           }
+             Log.d(LOGTAG, "==== options invitees\n" + invitees.toString());
 
           TurnBasedMatchConfig tbmc = TurnBasedMatchConfig.builder()
             .addInvitedPlayers(invitees)
             .setAutoMatchCriteria(autoMatchCriteria).build();
+             Log.d(LOGTAG, "==== options\n" + tbmc.toString());
 
-          // Start the match
+             // Start the match
           mTurnBasedMultiplayerClient.createMatch(tbmc)
             .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
               @Override
               public void onSuccess(TurnBasedMatch turnBasedMatch) {
+
                 onInitiateMatch(turnBasedMatch);
+                android.widget.Toast.makeText(
+                  cordova.getActivity(),
+                  "pending participant id"+turnBasedMatch.getPendingParticipantId()
+                  , Toast.LENGTH_SHORT)
+                  .show();
+                Log.d(LOGTAG, "==== options\n" + turnBasedMatch.toString());
 
               }
             })

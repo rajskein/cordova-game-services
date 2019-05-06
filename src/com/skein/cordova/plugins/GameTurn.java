@@ -10,7 +10,7 @@ public class GameTurn {
 
   public static final String TAG = "EBTurn";
 
-  public int data=0;
+  public JSONObject data;
   public int turnCounter;
 
   public GameTurn() {
@@ -21,7 +21,7 @@ public class GameTurn {
     JSONObject retVal = new JSONObject();
 
     try {
-      retVal.put("data", "1");
+      retVal.put("data", data);
       retVal.put("turnCounter", turnCounter);
 
     } catch (JSONException e) {
@@ -36,11 +36,11 @@ public class GameTurn {
   }
 
   // Creates a new instance of SkeletonTurn.
-  static public GameTurn unpersist(byte[] byteArray) {
-
+  static public JSONObject unpersist(byte[] byteArray) {
+    JSONObject obj=null;
     if (byteArray == null) {
       Log.d(TAG, "Empty array---possible bug.");
-      return new GameTurn();
+      return new JSONObject();
     }
 
     String st = null;
@@ -56,10 +56,10 @@ public class GameTurn {
     GameTurn retVal = new GameTurn();
 
     try {
-      JSONObject obj = new JSONObject(st);
+       obj = new JSONObject(st);
 
       if (obj.has("data")) {
-        retVal.data = obj.getInt("data");
+        retVal.data = obj.getJSONObject("data");
       }
       if (obj.has("turnCounter")) {
         retVal.turnCounter = obj.getInt("turnCounter");
@@ -69,6 +69,6 @@ public class GameTurn {
       Log.e("SkeletonTurn", "There was an issue parsing JSON!", e);
     }
 
-    return retVal;
+    return obj;
   }
 }
