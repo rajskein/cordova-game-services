@@ -1,20 +1,22 @@
   #Cordova Google Play Games Services
 
-**Install**
+##Install
  
   cordova plugin add https://github.com/kingemerald/cordova-games-services.git --variable GAME_APP_ID=app_id
   
-**Usage**
+##Usage
 
 
-*Connect*
+###Connect
+
 Connection/Authentication to the Google play games will happen with signIn api. This will prompt for default Game play console UI.
 
 
 cordova.plugins.playGamesServices.signIn({
 }, successCallback, failureCallback);
   
-Disconnect
+###Disconnect
+
 You should provde the option for users to sign out
 
 cordova.plugins.playGamesServices.signOut({
