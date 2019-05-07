@@ -597,6 +597,8 @@ JSONObject obj= new JSONObject();
           public void onSuccess(Player player) {
             mDisplayName = player.getDisplayName();
             mPlayerId = player.getPlayerId();
+            PluginResult result = new PluginResult(PluginResult.Status.OK,mDisplayName );
+        callback.sendPluginResult(result);
           }
         }
       )
