@@ -137,7 +137,7 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
         } else if (ACTION_AUTO_MATCH.equals(action)) {
           executeAutoMatch(callbackContext);
         }else if (ACTION_START_MATCH.equals(action)) {
-          executeStartMatch(callbackContext);
+          executeStartMatch(options,callbackContext);
         }else if (ACTION_CHECK_MATCH.equals(action)) {
           executeCheckMatch(callbackContext);
         } else if (ACTION_SHOW_ACHIEVEMENTS.equals(action)) {
