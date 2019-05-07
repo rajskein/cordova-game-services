@@ -1,13 +1,13 @@
   #Cordova Google Play Games Services
 
-Install
+**Install**
  
   cordova plugin add https://github.com/kingemerald/cordova-games-services.git --variable GAME_APP_ID=app_id
   
+**Usage**
 
-Usage
-Authentication
-Connect
+
+*Connect*
 Connection/Authentication to the Google play games will happen with signIn api. This will prompt for default Game play console UI.
 
 
