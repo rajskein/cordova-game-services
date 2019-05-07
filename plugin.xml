@@ -10,8 +10,8 @@
     <author>Rajamanickam</author>
     <license>MIT</license>
     <keywords>google, play, game, cordova, android, plugin, TurnBased, Multiplayer</keywords>git 
-    <repo>https://github.com/kingemerald/cordova-game-services.git</repo>
-    <issue>https://github.com/kingemerald/cordova-games-services/issues</issue>
+    <repo>https://github.com/rajskein/cordova-game-services.git</repo>
+    <issue>https://github.com/rajskein/cordova-games-services/issues</issue>
 
     <engines>
         <engine name="cordova" version=">=4.0.0" />

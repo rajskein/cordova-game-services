@@ -10,10 +10,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/kingemerald/cordova-game-services.git"
+    "url": "https://github.com/rajskein/cordova-game-services.git"
   },
   "bugs": {
-    "url": "https://github.com/kingemerald/issues"
+    "url": "https://github.com/rajskein/issues"
   },
   "keywords": [
     "ecosystem:cordova",
