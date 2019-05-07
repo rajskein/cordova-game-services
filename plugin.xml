@@ -5,11 +5,11 @@
     id="cordova-games-services"
     version="1.1.0">
 
-    <name>PlayGamesServices</name>
-    <description>Google Games Services Cordova Plugin</description>
+    <name>Android-Play-Games-Services</name>
+    <description>Android-Games-Services-Cordova-Plugin</description>
     <author>Rajamanickam</author>
     <license>MIT</license>
-    <keywords>google, play, game, cordova, android</keywords>
+    <keywords>google, play, game, cordova, android, plugin, TurnBased, Multiplayer</keywords>git 
     <repo>https://github.com/kingemerald/cordova-game-services.git</repo>
     <issue>https://github.com/kingemerald/cordova-games-services/issues</issue>
 
@@ -35,7 +35,7 @@
         </config-file>
 
         <config-file target="res/values/strings.xml" parent="/resources">
-            <string name="app_id">$APP_ID</string>
+            <string name="app_id">$GAME_APP_ID</string>
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
