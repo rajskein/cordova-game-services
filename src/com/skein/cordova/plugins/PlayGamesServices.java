@@ -215,7 +215,7 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
             }
         });
     }
-private void executeplayMatch(final JSONObject options,final CallbackContext callbackContext) {
+private void executePlayMatch(final JSONObject options,final CallbackContext callbackContext) {
 
       cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
