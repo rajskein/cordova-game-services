@@ -6,7 +6,7 @@ var PlayGamesServices = function () {
     this.name = PLAY_GAMES_SERVICES;
 };
 
-var actions = ['signIn', 'signOut', 'isSignedIn',
+var actions = ['signIn', 'signOut', 'isSignedIn','startMatch','checkMatch',
                 'autoMatch', 'showAchievements', 'showPlayer'];
 
 actions.forEach(function (action) {
@@ -36,3 +36,4 @@ actions.forEach(function (action) {
 
 module.exports = new PlayGamesServices();
 });
+
