@@ -368,7 +368,7 @@ JSONObject obj= new JSONObject();
   public void updateMatch(TurnBasedMatch match) {
     mMatch = match;
 
-    Log.d(LOGTAG, "==== options turnMatch\n" + mMatch.toString());
+    Log.d(LOGTAG, "==== options turnMatch 1231\n" + mMatch.toString());
 
     int status = match.getStatus();
     int turnStatus = match.getTurnStatus();
@@ -566,7 +566,7 @@ JSONObject obj= new JSONObject();
     public void onTurnBasedMatchReceived(@NonNull TurnBasedMatch turnBasedMatch) {
       android.widget.Toast.makeText(
         cordova.getActivity(),
-        "A match was updated."
+        "A match was updated 1123."
         , Toast.LENGTH_SHORT)
         .show();
       updateMatch(turnBasedMatch);
