@@ -58,9 +58,13 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     private static final String ACTION_SIGN_OUT = "signOut";
     private static final String ACTION_IS_SIGNEDIN = "isSignedIn";
     private static final String ACTION_AUTO_MATCH = "autoMatch";
-  private static final String ACTION_START_MATCH = "startMatch";
-  private static final String ACTION_PLAY_MATCH = "playMatch";
-  private static final String ACTION_CHECK_MATCH = "checkMatch";
+    private static final String ACTION_START_MATCH = "startMatch";
+    private static final String ACTION_PLAY_MATCH = "playMatch";
+    private static final String ACTION_CHECK_MATCH = "checkMatch";
+    private static final String ACTION_RE_MATCH = "reMatch";
+    private static final String ACTION_CANCEL_MATCH = "cancelMatch";
+    private static final String ACTION_LEAVE_MATCH = "leaveMatch";
+    private static final String ACTION_FINISH_MATCH = "finishMatch";
     private static final String ACTION_SHOW_ACHIEVEMENTS = "showAchievements";
     private static final String ACTION_SHOW_PLAYER = "showPlayer";
 
@@ -143,7 +147,15 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
           executePlayMatch(options,callbackContext);
         }else if (ACTION_CHECK_MATCH.equals(action)) {
           executeCheckMatch(callbackContext);
-        } else if (ACTION_SHOW_ACHIEVEMENTS.equals(action)) {
+        }else if (ACTION_RE_MATCH.equals(action)) {
+          executeReMatch(callbackContext);
+        } else if (ACTION_CANCEL_MATCH.equals(action)) {
+          executeReMatch(callbackContext);
+        }else if (ACTION_FINISH_MATCH.equals(action)) {
+          executeReMatch(callbackContext);
+        }else if (ACTION_LEAVE_MATCH.equals(action)) {
+          executeReMatch(callbackContext);
+        }else if (ACTION_SHOW_ACHIEVEMENTS.equals(action)) {
             executeShowAchievements(callbackContext);
         } else if (ACTION_SHOW_PLAYER.equals(action)) {
             executeShowPlayer(callbackContext);
@@ -294,7 +306,22 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
     }
 
 
+  private void executeReMatch(final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeShowAllLeaderboards");
+    Log.d(LOGTAG,"Log rematch"+mMatch.toString());
 
+    mTurnBasedMultiplayerClient.rematch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
+        @Override
+        public void onSuccess(TurnBasedMatch turnBasedMatch) {
+          onInitiateMatch(turnBasedMatch);
+          Log.d(LOGTAG,"rematch Done"+turnBasedMatch);
+
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem starting a rematch!"));
+    mMatch = null;
+  }
 
 
     private void executeShowAchievements(final CallbackContext callbackContext) {
@@ -410,6 +437,55 @@ JSONObject obj= new JSONObject();
   }
 
 
+  // Cancel the game. Should possibly wait until the game is canceled before
+  // giving up on the view.
+  public void executeCancelMatch(final CallbackContext callbackContext) {
+
+    mTurnBasedMultiplayerClient.cancelMatch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<String>() {
+        @Override
+        public void onSuccess(String matchId) {
+
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem cancelling the match!"));
+
+  }
+
+  // Leave the game during your turn. Note that there is a separate
+  // mTurnBasedMultiplayerClient.leaveMatch() if you want to leave NOT on your turn.
+  public void executeLeaveMatch(final CallbackContext callbackContext) {
+
+    String nextParticipantId = getNextParticipantId();
+
+    mTurnBasedMultiplayerClient.leaveMatchDuringTurn(mMatch.getMatchId(), nextParticipantId)
+      .addOnSuccessListener(new OnSuccessListener<Void>() {
+        @Override
+        public void onSuccess(Void aVoid) {
+
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem leaving the match!"));
+
+
+  }
+
+  // Finish the game. Sometimes, this is your only choice.
+  public void executeFinishMatch(final CallbackContext callbackContext) {
+    ;
+    mTurnBasedMultiplayerClient.finishMatch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
+        @Override
+        public void onSuccess(TurnBasedMatch turnBasedMatch) {
+          onUpdateMatch(turnBasedMatch);
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem finishing the match!"));
+
+  }
+
+
+
   public String getNextParticipantId() {
 
     String myParticipantId = mMatch.getParticipantId(mPlayerId);
@@ -446,10 +522,19 @@ JSONObject obj= new JSONObject();
     }
 
 
-
    // setViewVisibility();
   }
-
+  public void rematch() {
+    mTurnBasedMultiplayerClient.rematch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
+        @Override
+        public void onSuccess(TurnBasedMatch turnBasedMatch) {
+          onInitiateMatch(turnBasedMatch);
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem starting a rematch!"));
+    mMatch = null;
+  }
   public void updateMatch(TurnBasedMatch match) {
     mMatch = match;
 
@@ -597,8 +682,17 @@ JSONObject obj= new JSONObject();
           public void onSuccess(Player player) {
             mDisplayName = player.getDisplayName();
             mPlayerId = player.getPlayerId();
-            PluginResult result = new PluginResult(PluginResult.Status.OK,mDisplayName );
-        callback.sendPluginResult(result);
+            player.getHiResImageUri();
+            JSONObject obj = new JSONObject();
+            try {
+              obj.put("playerName",mDisplayName);
+              obj.put("playerId",player.getPlayerId());
+              obj.put("playerUrl",player.getIconImageUri());
+            } catch (JSONException e) {
+              e.printStackTrace();
+            }
+            PluginResult result = new PluginResult(PluginResult.Status.OK,obj );
+            callback.sendPluginResult(result);
           }
         }
       )

@@ -6,7 +6,7 @@ var PlayGamesServices = function () {
     this.name = PLAY_GAMES_SERVICES;
 };
 
-var actions = ['signIn', 'signOut', 'isSignedIn','startMatch','checkMatch','playMatch',
+var actions = ['signIn', 'signOut', 'isSignedIn','startMatch','checkMatch','playMatch','reMatch','finishMatch','cancelMatch','leaveMatch'
                 'autoMatch', 'showAchievements', 'showPlayer'];
 
 actions.forEach(function (action) {
