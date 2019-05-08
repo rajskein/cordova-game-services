@@ -7,7 +7,7 @@ var PlayGamesServices = function () {
 };
 
 var actions = ['signIn', 'signOut', 'isSignedIn','startMatch','checkMatch','playMatch','reMatch','finishMatch','cancelMatch','leaveMatch',
-                'autoMatch', 'showAchievements', 'showPlayer'];
+                'autoMatch', 'showAchievements', 'showLeaderBoard','submitScore'];
 
 actions.forEach(function (action) {
     PlayGamesServices.prototype[action] = function (data, success, failure) {

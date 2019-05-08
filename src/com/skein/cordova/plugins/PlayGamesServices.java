@@ -20,6 +20,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import com.google.android.gms.games.AchievementsClient;
+import com.google.android.gms.games.LeaderboardsClient;
 import com.google.android.gms.games.multiplayer.turnbased.TurnBasedMatchUpdateCallback;
 import com.skein.cordova.plugins.GameHelper.GameHelperListener;
 import com.google.android.gms.common.ConnectionResult;
@@ -66,18 +68,21 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     private static final String ACTION_LEAVE_MATCH = "leaveMatch";
     private static final String ACTION_FINISH_MATCH = "finishMatch";
     private static final String ACTION_SHOW_ACHIEVEMENTS = "showAchievements";
-    private static final String ACTION_SHOW_PLAYER = "showPlayer";
+    private static final String ACTION_LEADER_BOARD = "showLeaderBoard";
+    private static final String ACTION_SUBMIT_SCORE = "submitScore";
 
     private static final int RC_SIGN_IN = 9001;
     final static int RC_SELECT_PLAYERS = 10000;
     final static int RC_LOOK_AT_MATCHES = 10001;
+  private static final int RC_UNUSED = 5001;
 
 
     private TurnBasedMultiplayerClient mTurnBasedMultiplayerClient = null;
     private GoogleSignInClient mGoogleSignInClient = null;
     private GoogleSignInAccount mGoogleSignInAccount=null;
     private InvitationsClient mInvitationsClient = null;
-
+  private AchievementsClient mAchievementsClient;
+  private LeaderboardsClient mLeaderboardsClient;
      private String mDisplayName;
      private String mPlayerId;
 
@@ -150,15 +155,17 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
         }else if (ACTION_RE_MATCH.equals(action)) {
           executeReMatch(callbackContext);
         } else if (ACTION_CANCEL_MATCH.equals(action)) {
-          executeReMatch(callbackContext);
+          executeCancelMatch(callbackContext);
         }else if (ACTION_FINISH_MATCH.equals(action)) {
-          executeReMatch(callbackContext);
+          executeFinishMatch(callbackContext);
         }else if (ACTION_LEAVE_MATCH.equals(action)) {
-          executeReMatch(callbackContext);
+          executeLeaveMatch(callbackContext);
         }else if (ACTION_SHOW_ACHIEVEMENTS.equals(action)) {
             executeShowAchievements(callbackContext);
-        } else if (ACTION_SHOW_PLAYER.equals(action)) {
-            executeShowPlayer(callbackContext);
+        } else if (ACTION_LEADER_BOARD.equals(action)) {
+            executeshowLeaderBoard(callbackContext);
+        }else if (ACTION_SUBMIT_SCORE.equals(action)) {
+          executeSubmitScore(options,callbackContext);
         } else {
             return false; // Tried to execute an unknown method
         }
@@ -187,45 +194,10 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
 
     private void executeIsSignedIn(final JSONObject options,final CallbackContext callbackContext) {
 
-      cordova.getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-              mTurnData = new GameTurn();
-              // Some basic turn data
 
-              try {
-                mTurnData.data = options.getJSONObject("data") ;
-              } catch (JSONException e) {
-                e.printStackTrace();
-              }
-              mTurnData.turnCounter += 1;
-
-
-              String nextParticipantId = getNextParticipantId();
-
-
-              mTurnBasedMultiplayerClient.takeTurn(mMatch.getMatchId(),
-                mTurnData.persist(), nextParticipantId)
-                .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
-                  @Override
-                  public void onSuccess(TurnBasedMatch turnBasedMatch) {
-                   // onUpdateMatch(turnBasedMatch);
-
-                   boolean isDoingTurn = (turnBasedMatch.getTurnStatus() == TurnBasedMatch.MATCH_TURN_STATUS_MY_TURN);
-
-                    if (isDoingTurn) {
-                      updateMatch(turnBasedMatch);
-                      return;
-                    }
-                  }
-                })
-                .addOnFailureListener(createFailureListener("There was a problem taking a turn!"));
-
-              mTurnData = null;
-
-
-            }
-        });
+      boolean isSignedIn = mTurnBasedMultiplayerClient != null;
+      PluginResult result = new PluginResult(PluginResult.Status.OK,isSignedIn );
+      callback.sendPluginResult(result);
     }
 private void executePlayMatch(final JSONObject options,final CallbackContext callbackContext) {
 
@@ -326,50 +298,40 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
 
     private void executeShowAchievements(final CallbackContext callbackContext) {
         final PlayGamesServices plugin = this;
-       /* cordova.getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-              try {*/
-                mTurnBasedMultiplayerClient.getSelectOpponentsIntent(1, 1, true)
-                  .addOnSuccessListener(new OnSuccessListener<Intent>() {
-                    @Override
-                    public void onSuccess(Intent intent) {
-                      cordova.startActivityForResult(plugin,intent, RC_SELECT_PLAYERS);
-                    }
-                  })
-                  .addOnFailureListener(createFailureListener("fail"));
-            /*  }
-                catch(Exception e) {
-                  Log.w(LOGTAG, "executeShowPlayer: Error providing player data", e);
-                  callbackContext.error("executeShowPlayer: Error providing player data");
-                }
-            }
-        });*/
+
+      mAchievementsClient.getAchievementsIntent()
+        .addOnSuccessListener(new OnSuccessListener<Intent>() {
+          @Override
+          public void onSuccess(Intent intent) {
+            cordova.startActivityForResult(plugin,intent, RC_UNUSED);
+          }
+        })
+        .addOnFailureListener(new OnFailureListener() {
+          @Override
+          public void onFailure(@NonNull Exception e) {
+           // handleException(e, getString(R.string.leaderboards_exception));
+          }
+        });
+
     }
 
 
-    private void executeShowPlayer(final CallbackContext callbackContext) {
+    private void executeshowLeaderBoard(final CallbackContext callbackContext) {
         Log.d(LOGTAG, "executeShowPlayer");
       final PlayGamesServices plugin = this;
-       /* cordova.getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                try {*/
-                  mTurnBasedMultiplayerClient.getInboxIntent()
-                    .addOnSuccessListener(new OnSuccessListener<Intent>() {
-                      @Override
-                      public void onSuccess(Intent intent) {
-                        cordova.startActivityForResult(plugin,intent, RC_LOOK_AT_MATCHES);
-                      }
-                    })
-                    .addOnFailureListener(createFailureListener("fail"));
-               /* }
-                catch(Exception e) {
-                    Log.w(LOGTAG, "executeShowPlayer: Error providing player data", e);
-                    callbackContext.error("executeShowPlayer: Error providing player data");
-                }
-            }
-        });*/
+      mLeaderboardsClient.getAllLeaderboardsIntent()
+        .addOnSuccessListener(new OnSuccessListener<Intent>() {
+          @Override
+          public void onSuccess(Intent intent) {
+            cordova.startActivityForResult(plugin,intent, RC_UNUSED);
+          }
+        })
+        .addOnFailureListener(new OnFailureListener() {
+          @Override
+          public void onFailure(@NonNull Exception e) {
+            //handleException(e, getString(R.string.leaderboards_exception));
+          }
+        });
     }
 
 
@@ -445,7 +407,7 @@ JSONObject obj= new JSONObject();
       .addOnSuccessListener(new OnSuccessListener<String>() {
         @Override
         public void onSuccess(String matchId) {
-
+Log.d(LOGTAG,"matchId Cacnel"+matchId);
         }
       })
       .addOnFailureListener(createFailureListener("There was a problem cancelling the match!"));
@@ -462,7 +424,7 @@ JSONObject obj= new JSONObject();
       .addOnSuccessListener(new OnSuccessListener<Void>() {
         @Override
         public void onSuccess(Void aVoid) {
-
+          Log.d(LOGTAG,"matchId Leave");
         }
       })
       .addOnFailureListener(createFailureListener("There was a problem leaving the match!"));
@@ -477,13 +439,24 @@ JSONObject obj= new JSONObject();
       .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
         @Override
         public void onSuccess(TurnBasedMatch turnBasedMatch) {
-          onUpdateMatch(turnBasedMatch);
+          updateMatch(turnBasedMatch);
+          Log.d(LOGTAG,"matchId Finish");
+
         }
       })
       .addOnFailureListener(createFailureListener("There was a problem finishing the match!"));
 
   }
+  public void executeSubmitScore(final JSONObject options,final CallbackContext callbackContext) {
 
+int finalscore=0;
+    try {
+      finalscore = options.getInt("data") ;
+    } catch (JSONException e) {
+      e.printStackTrace();
+    }
+    mLeaderboardsClient.submitScore("CgkIut_irrQWEAIQAw", finalscore);
+  }
 
 
   public String getNextParticipantId() {
@@ -673,6 +646,8 @@ JSONObject obj= new JSONObject();
 
     mTurnBasedMultiplayerClient = Games.getTurnBasedMultiplayerClient(cordova.getActivity(), googleSignInAccount);
     mInvitationsClient = Games.getInvitationsClient(cordova.getActivity(), googleSignInAccount);
+    mLeaderboardsClient = Games.getLeaderboardsClient(cordova.getActivity(), googleSignInAccount);
+    mAchievementsClient = Games.getAchievementsClient(cordova.getActivity(), googleSignInAccount);
 
     Games.getPlayersClient(cordova.getActivity(), googleSignInAccount)
       .getCurrentPlayer()
