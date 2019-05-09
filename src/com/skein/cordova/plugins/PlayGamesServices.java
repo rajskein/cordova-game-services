@@ -2,22 +2,21 @@
 package com.skein.cordova.plugins;
 
 import org.apache.cordova.CallbackContext;
-import org.apache.cordova.CordovaActivity;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.LOG;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import com.google.android.gms.games.AnnotatedData;
+import android.support.annotation.NonNull;
 import android.app.*;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.util.Log;
-import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.games.AchievementsClient;
@@ -27,24 +26,15 @@ import com.skein.cordova.plugins.GameHelper.GameHelperListener;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.common.api.PendingResult;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Result;
-import com.google.android.gms.games.Game;
 import com.google.android.gms.games.Games;
-import com.google.android.gms.games.GamesStatusCodes;
 import com.google.android.gms.games.Player;
 import com.google.android.gms.games.multiplayer.*;
 import com.google.android.gms.games.leaderboard.*;
-import com.google.android.gms.games.achievement.*;
 import com.google.android.gms.games.multiplayer.realtime.RoomConfig;
 import com.google.android.gms.games.multiplayer.turnbased.TurnBasedMatch;
 import com.google.android.gms.auth.api.signin.*;
-import com.google.android.gms.games.GamesCallbackStatusCodes;
 import com.google.android.gms.games.GamesClient;
-import com.google.android.gms.games.GamesClientStatusCodes;
 import com.google.android.gms.games.InvitationsClient;
-import com.google.android.gms.games.Player;
 import com.google.android.gms.games.TurnBasedMultiplayerClient;
 import com.google.android.gms.games.multiplayer.turnbased.TurnBasedMatchConfig;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -74,28 +64,26 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     private static final int RC_SIGN_IN = 9001;
     final static int RC_SELECT_PLAYERS = 10000;
     final static int RC_LOOK_AT_MATCHES = 10001;
-  private static final int RC_UNUSED = 5001;
+    private static final int RC_UNUSED = 5001;
 
 
     private TurnBasedMultiplayerClient mTurnBasedMultiplayerClient = null;
     private GoogleSignInClient mGoogleSignInClient = null;
     private GoogleSignInAccount mGoogleSignInAccount=null;
     private InvitationsClient mInvitationsClient = null;
-  private AchievementsClient mAchievementsClient;
-  private LeaderboardsClient mLeaderboardsClient;
-     private String mDisplayName;
-     private String mPlayerId;
+    private AchievementsClient mAchievementsClient;
+    private LeaderboardsClient mLeaderboardsClient;
+    private LeaderboardScore leaderScore;
+    private String mDisplayName;
+    private String mPlayerId;
+    private GameHelper gameHelper;
 
-     private GameHelper gameHelper;
-  JSONObject dataObj=null;
-
-     public TurnBasedMatch mMatch;
-     public GameTurn mTurnData;
-     private AlertDialog mAlertDialog;
-     private int googlePlayServicesReturnCode;
-
-  private CallbackContext callback = null;
-  private CallbackContext authCallbackContext;
+    public TurnBasedMatch mMatch;
+    public GameTurn mTurnData;
+    private AlertDialog mAlertDialog;
+    private int googlePlayServicesReturnCode;
+    private CallbackContext callback = null;
+    private CallbackContext authCallbackContext;
 
   @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
@@ -103,27 +91,20 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
         Activity cordovaActivity = cordova.getActivity();
 
         googlePlayServicesReturnCode = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(cordovaActivity);
-
         if (googlePlayServicesReturnCode == ConnectionResult.SUCCESS) {
             gameHelper = new GameHelper(cordovaActivity, BaseGameActivity.CLIENT_GAMES);
-            //gameHelper.setup(this);
-           mGoogleSignInClient = GoogleSignIn.getClient(cordovaActivity, GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN);
-
-
-
+            mGoogleSignInClient = GoogleSignIn.getClient(cordovaActivity, GoogleSignInOptions.DEFAULT_GAMES_SIGN_IN);
         } else {
             Log.w(LOGTAG, String.format("GooglePlayServices not available. Error: '" +
                     GoogleApiAvailability.getInstance().getErrorString(googlePlayServicesReturnCode) +
                     "'. Error Code: " + googlePlayServicesReturnCode));
         }
-
         cordova.setActivityResultCallback(this);
     }
 
     @Override
     public boolean execute(String action, JSONArray inputs, CallbackContext callbackContext) throws JSONException {
       Log.d(LOGTAG, "==== options\n" + inputs.toString());
-
       JSONObject options = inputs.optJSONObject(0);
       callback=callbackContext;
         if (gameHelper == null) {
@@ -136,8 +117,7 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
             return true;
         }
 
-        Log.i(LOGTAG, String.format("Processing action " + action + " ..."));
-
+        Log.i(LOGTAG, String.format(" action " + action + " ..."));
         if (ACTION_SIGN_IN.equals(action)) {
             executeSignIn(callbackContext);
         } else if (ACTION_SIGN_OUT.equals(action)) {
@@ -193,40 +173,45 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     }
 
     private void executeIsSignedIn(final JSONObject options,final CallbackContext callbackContext) {
-
-
       boolean isSignedIn = mTurnBasedMultiplayerClient != null;
       PluginResult result = new PluginResult(PluginResult.Status.OK,isSignedIn );
       callback.sendPluginResult(result);
     }
-private void executePlayMatch(final JSONObject options,final CallbackContext callbackContext) {
 
+  private void executeStartMatch(final JSONObject options,final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeStartMatch");
+    final PlayGamesServices plugin = this;
+    mTurnBasedMultiplayerClient.getSelectOpponentsIntent(1, 1, true)
+      .addOnSuccessListener(new OnSuccessListener<Intent>() {
+        @Override
+        public void onSuccess(Intent intent) {
+          cordova.startActivityForResult(plugin,intent, RC_SELECT_PLAYERS);
+        }
+      })
+      .addOnFailureListener(createFailureListener("fail"));
+  }
+
+   private void executePlayMatch(final JSONObject options,final CallbackContext callbackContext) {
       cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
               mTurnData = new GameTurn();
-              // Some basic turn data
-
               try {
                 mTurnData.data = options.getJSONObject("data") ;
+                mTurnData.p_1 = options.getJSONArray("p_1");
+                mTurnData.p_2 = options.getJSONArray("p_2");
               } catch (JSONException e) {
                 e.printStackTrace();
               }
-              mTurnData.turnCounter += 1;
-
-
               String nextParticipantId = getNextParticipantId();
-
-
+              mTurnData.turnCounter += 1;
+              mTurnData.cPlayer=nextParticipantId;
               mTurnBasedMultiplayerClient.takeTurn(mMatch.getMatchId(),
                 mTurnData.persist(), nextParticipantId)
                 .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
                   @Override
                   public void onSuccess(TurnBasedMatch turnBasedMatch) {
-                   // onUpdateMatch(turnBasedMatch);
-
                    boolean isDoingTurn = (turnBasedMatch.getTurnStatus() == TurnBasedMatch.MATCH_TURN_STATUS_MY_TURN);
-
                     if (isDoingTurn) {
                       updateMatch(turnBasedMatch);
                       return;
@@ -234,38 +219,17 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
                   }
                 })
                 .addOnFailureListener(createFailureListener("There was a problem taking a turn!"));
-
               mTurnData = null;
-
-
             }
         });
     }
 
-
-
-  private void executeStartMatch(final JSONObject options,final CallbackContext callbackContext) {
-
-  final PlayGamesServices plugin = this;
-      
-                mTurnBasedMultiplayerClient.getSelectOpponentsIntent(1, 1, true)
-                  .addOnSuccessListener(new OnSuccessListener<Intent>() {
-                    @Override
-                    public void onSuccess(Intent intent) {
-                      cordova.startActivityForResult(plugin,intent, RC_SELECT_PLAYERS);
-                    }
-                  })
-                  .addOnFailureListener(createFailureListener("fail"));
-  }
     private void executeAutoMatch(final CallbackContext callbackContext) {
-        Log.d(LOGTAG, "executeShowAllLeaderboards");
-
+        Log.d(LOGTAG, "executeAutoMatch");
         final PlayGamesServices plugin = this;
       Bundle autoMatchCriteria = RoomConfig.createAutoMatchCriteria(1, 1, 0);
-
       TurnBasedMatchConfig turnBasedMatchConfig = TurnBasedMatchConfig.builder()
         .setAutoMatchCriteria(autoMatchCriteria).build();
-
       // Start the match
       mTurnBasedMultiplayerClient.createMatch(turnBasedMatchConfig)
         .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
@@ -277,11 +241,21 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
         .addOnFailureListener(createFailureListener("There was a problem creating a match!"));
     }
 
+  private void executeCheckMatch(final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeCheckMatch");
+    final PlayGamesServices plugin = this;
+    mTurnBasedMultiplayerClient.getInboxIntent()
+      .addOnSuccessListener(new OnSuccessListener<Intent>() {
+        @Override
+        public void onSuccess(Intent intent) {
+          cordova.startActivityForResult(plugin,intent, RC_LOOK_AT_MATCHES);
+        }
+      })
+      .addOnFailureListener(createFailureListener("fail"));
+  }
 
   private void executeReMatch(final CallbackContext callbackContext) {
-    Log.d(LOGTAG, "executeShowAllLeaderboards");
-    Log.d(LOGTAG,"Log rematch"+mMatch.toString());
-
+    Log.d(LOGTAG, "executeReMatch");
     mTurnBasedMultiplayerClient.rematch(mMatch.getMatchId())
       .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
         @Override
@@ -296,6 +270,91 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
   }
 
 
+  public void executeCancelMatch(final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeCancelMatch");
+
+    mTurnBasedMultiplayerClient.cancelMatch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<String>() {
+        @Override
+        public void onSuccess(String matchId) {
+          Log.d(LOGTAG,"matchId Cacnel"+matchId);
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem cancelling the match!"));
+
+  }
+
+
+  public void executeLeaveMatch(final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeFinishMatch");
+
+    String nextParticipantId = getNextParticipantId();
+    mTurnBasedMultiplayerClient.leaveMatchDuringTurn(mMatch.getMatchId(), nextParticipantId)
+      .addOnSuccessListener(new OnSuccessListener<Void>() {
+        @Override
+        public void onSuccess(Void aVoid) {
+          Log.d(LOGTAG,"matchId Leave");
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem leaving the match!"));
+
+
+  }
+
+  public void executeFinishMatch(final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeFinishMatch");
+    mTurnBasedMultiplayerClient.finishMatch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
+        @Override
+        public void onSuccess(TurnBasedMatch turnBasedMatch) {
+          updateMatch(turnBasedMatch);
+          Log.d(LOGTAG,"matchId Finish");
+
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem finishing the match!"));
+
+  }
+  public void executeSubmitScore(final JSONObject options,final CallbackContext callbackContext) {
+    Log.d(LOGTAG, "executeSubmitScore");
+    int finalscore=0;
+    try {
+      finalscore = options.getInt("data") ;
+    } catch (JSONException e) {
+      e.printStackTrace();
+    }
+    LOG.d(LOGTAG,"score final======>"+finalscore);
+
+    int finalScore = finalscore;
+    mLeaderboardsClient.loadCurrentPlayerLeaderboardScore("CgkIut_irrQWEAIQAw", LeaderboardVariant.TIME_SPAN_ALL_TIME, LeaderboardVariant.COLLECTION_PUBLIC)
+      .addOnSuccessListener(cordova.getActivity(), new OnSuccessListener<AnnotatedData<LeaderboardScore>>() {
+        @Override
+        public void onSuccess(AnnotatedData<LeaderboardScore> leaderboardScoreAnnotatedData) {
+          long score = 0L;
+          if (leaderboardScoreAnnotatedData != null) {
+            if (leaderboardScoreAnnotatedData.get() != null) {
+              score = leaderboardScoreAnnotatedData.get().getRawScore();
+
+              mLeaderboardsClient.submitScore("CgkIut_irrQWEAIQAw", score+ finalScore);
+              Log.d(LOGTAG, "LeaderBoard: " + Long.toString(score));
+            } else {
+              Log.d(LOGTAG, "LeaderBoard: .get() is null");
+            }
+          } else {
+            Toast.makeText(cordova.getActivity(), "no data...", Toast.LENGTH_SHORT).show();
+            Log.d(LOGTAG, "LeaderBoard: " + Long.toString(score));
+          }
+        }
+      })
+      .addOnFailureListener(new OnFailureListener() {
+        @Override
+        public void onFailure(@NonNull Exception e) {
+          Toast.makeText(cordova.getActivity(), "Failure", Toast.LENGTH_SHORT).show();
+          Log.d(LOGTAG, "LeaderBoard: FAILURE");
+        }
+      });
+
+  }
     private void executeShowAchievements(final CallbackContext callbackContext) {
         final PlayGamesServices plugin = this;
 
@@ -315,9 +374,8 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
 
     }
 
-
     private void executeshowLeaderBoard(final CallbackContext callbackContext) {
-        Log.d(LOGTAG, "executeShowPlayer");
+        Log.d(LOGTAG, "executeLeaderBoard");
       final PlayGamesServices plugin = this;
       mLeaderboardsClient.getAllLeaderboardsIntent()
         .addOnSuccessListener(new OnSuccessListener<Intent>() {
@@ -334,197 +392,40 @@ private void executePlayMatch(final JSONObject options,final CallbackContext cal
         });
     }
 
-
-  private void executeCheckMatch(final CallbackContext callbackContext) {
-    Log.d(LOGTAG, "executeShowPlayer");
-    final PlayGamesServices plugin = this;
-       /* cordova.getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                try {*/
-    mTurnBasedMultiplayerClient.getInboxIntent()
-      .addOnSuccessListener(new OnSuccessListener<Intent>() {
-        @Override
-        public void onSuccess(Intent intent) {
-          cordova.startActivityForResult(plugin,intent, RC_LOOK_AT_MATCHES);
-        }
-      })
-      .addOnFailureListener(createFailureListener("fail"));
-               /* }
-                catch(Exception e) {
-                    Log.w(LOGTAG, "executeShowPlayer: Error providing player data", e);
-                    callbackContext.error("executeShowPlayer: Error providing player data");
-                }
-            }
-        });*/
-  }
-
   
   private void onInitiateMatch(TurnBasedMatch match) {
-   // dismissSpinner();
-
     if (match.getData() != null) {
-      // This is a game that has already started, so I'll just start
       updateMatch(match);
       return;
     }
-
     startMatch(match);
   }
 
-
   public void startMatch(TurnBasedMatch match) {
-
     mTurnData = new GameTurn();
     // Some basic turn data
-JSONObject obj= new JSONObject();
-
-      mTurnData.data = obj;
-    mTurnData.turnCounter = 0;
+    JSONObject obj= new JSONObject();
     mMatch = match;
 
     String myParticipantId = mMatch.getParticipantId(mPlayerId);
-
+    mTurnData.data = obj;
+    mTurnData.cPlayer=myParticipantId;
+    mTurnData.turnCounter = 0;
     mTurnBasedMultiplayerClient.takeTurn(match.getMatchId(),
       mTurnData.persist(), myParticipantId)
       .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
         @Override
         public void onSuccess(TurnBasedMatch turnBasedMatch) {
-
-
           updateMatch(turnBasedMatch);
         }
       })
       .addOnFailureListener(createFailureListener("There was a problem taking a turn!"));
   }
 
-
-  // Cancel the game. Should possibly wait until the game is canceled before
-  // giving up on the view.
-  public void executeCancelMatch(final CallbackContext callbackContext) {
-
-    mTurnBasedMultiplayerClient.cancelMatch(mMatch.getMatchId())
-      .addOnSuccessListener(new OnSuccessListener<String>() {
-        @Override
-        public void onSuccess(String matchId) {
-Log.d(LOGTAG,"matchId Cacnel"+matchId);
-        }
-      })
-      .addOnFailureListener(createFailureListener("There was a problem cancelling the match!"));
-
-  }
-
-  // Leave the game during your turn. Note that there is a separate
-  // mTurnBasedMultiplayerClient.leaveMatch() if you want to leave NOT on your turn.
-  public void executeLeaveMatch(final CallbackContext callbackContext) {
-
-    String nextParticipantId = getNextParticipantId();
-
-    mTurnBasedMultiplayerClient.leaveMatchDuringTurn(mMatch.getMatchId(), nextParticipantId)
-      .addOnSuccessListener(new OnSuccessListener<Void>() {
-        @Override
-        public void onSuccess(Void aVoid) {
-          Log.d(LOGTAG,"matchId Leave");
-        }
-      })
-      .addOnFailureListener(createFailureListener("There was a problem leaving the match!"));
-
-
-  }
-
-  // Finish the game. Sometimes, this is your only choice.
-  public void executeFinishMatch(final CallbackContext callbackContext) {
-    ;
-    mTurnBasedMultiplayerClient.finishMatch(mMatch.getMatchId())
-      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
-        @Override
-        public void onSuccess(TurnBasedMatch turnBasedMatch) {
-          updateMatch(turnBasedMatch);
-          Log.d(LOGTAG,"matchId Finish");
-
-        }
-      })
-      .addOnFailureListener(createFailureListener("There was a problem finishing the match!"));
-
-  }
-  public void executeSubmitScore(final JSONObject options,final CallbackContext callbackContext) {
-
-int finalscore=0;
-    try {
-      finalscore = options.getInt("data") ;
-    } catch (JSONException e) {
-      e.printStackTrace();
-    }
-    mLeaderboardsClient.submitScore("CgkIut_irrQWEAIQAw", finalscore);
-  }
-
-
-  public String getNextParticipantId() {
-
-    String myParticipantId = mMatch.getParticipantId(mPlayerId);
-
-    ArrayList<String> participantIds = mMatch.getParticipantIds();
-
-    int desiredIndex = -1;
-
-    for (int i = 0; i < participantIds.size(); i++) {
-      if (participantIds.get(i).equals(myParticipantId)) {
-        desiredIndex = i + 1;
-      }
-    }
-
-    if (desiredIndex < participantIds.size()) {
-      return participantIds.get(desiredIndex);
-    }
-
-    if (mMatch.getAvailableAutoMatchSlots() <= 0) {
-      // You've run out of automatch slots, so we start over.
-      return participantIds.get(0);
-    } else {
-      // You have not yet fully automatched, so null will find a new
-      // person to play against.
-      return null;
-    }
-  }
-
-  public void onUpdateMatch(TurnBasedMatch match) {
-  //  dismissSpinner();
-
-    if (match.canRematch()) {
-     // askForRematch();
-    }
-
-
-   // setViewVisibility();
-  }
-  public void rematch() {
-    mTurnBasedMultiplayerClient.rematch(mMatch.getMatchId())
-      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
-        @Override
-        public void onSuccess(TurnBasedMatch turnBasedMatch) {
-          onInitiateMatch(turnBasedMatch);
-        }
-      })
-      .addOnFailureListener(createFailureListener("There was a problem starting a rematch!"));
-    mMatch = null;
-  }
   public void updateMatch(TurnBasedMatch match) {
     mMatch = match;
-
-    Log.d(LOGTAG, "==== options turnMatch 1231\n" + mMatch.toString());
-
     int status = match.getStatus();
     int turnStatus = match.getTurnStatus();
-    Log.d(LOGTAG, "==== options turnMatch\n" + status + "trun" + turnStatus);
-
-
-    android.widget.Toast.makeText(
-      cordova.getActivity(),
-      "2 You are game in as  "+match.getData().toString()
-      , Toast.LENGTH_SHORT)
-      .show();
-    Log.d(LOGTAG, "==== options match getdata\n" + match.getData().toString());
-
     switch (status) {
       case TurnBasedMatch.MATCH_STATUS_CANCELED:
         android.widget.Toast.makeText(
@@ -533,6 +434,9 @@ int finalscore=0;
           , Toast.LENGTH_SHORT)
           .show();
         showWarning("Canceled!", "This game was canceled!");
+        PluginResult result = new PluginResult(PluginResult.Status.OK,"cancelled");
+        result.setKeepCallback(true);
+        callback.sendPluginResult(result);
         return;
       case TurnBasedMatch.MATCH_STATUS_EXPIRED:
         android.widget.Toast.makeText(
@@ -562,6 +466,9 @@ int finalscore=0;
               "              \"There is nothing to be done."
             , Toast.LENGTH_SHORT)
             .show();
+          PluginResult result1 = new PluginResult(PluginResult.Status.OK,"completed");
+          result1.setKeepCallback(true);
+          callback.sendPluginResult(result1);
           break;
         }
 
@@ -574,26 +481,29 @@ int finalscore=0;
           "This game is over; someone finished it!  You can only finish it now."
           , Toast.LENGTH_SHORT)
           .show();
+        PluginResult result1 = new PluginResult(PluginResult.Status.OK,"completed");
+        result1.setKeepCallback(true);
+        callback.sendPluginResult(result1);
+
     }
 
     // OK, it's active. Check on turn status.
     switch (turnStatus) {
       case TurnBasedMatch.MATCH_TURN_STATUS_MY_TURN:
         JSONObject obj = GameTurn.unpersist(mMatch.getData());
-        //setGameplayUI();
 
-
+        LOG.d(LOGTAG,"data"+obj.toString());
         PluginResult result = new PluginResult(PluginResult.Status.OK,obj );
         result.setKeepCallback(true);
         callback.sendPluginResult(result);
-       // String nextParticipantId = getNextParticipantId();
+        // String nextParticipantId = getNextParticipantId();
         return;
       case TurnBasedMatch.MATCH_TURN_STATUS_THEIR_TURN:
         // Should return results.
-       // showWarning("Alas...", "It's not your turn.");
-        PluginResult result1 = new PluginResult(PluginResult.Status.OK, "your opponant turn hura");
-        result1.setKeepCallback(true);
-        callback.sendPluginResult(result1);
+        // showWarning("Alas...", "It's not your turn.");
+        //PluginResult result1 = new PluginResult(PluginResult.Status.OK, "your opponant turn hura");
+        //result1.setKeepCallback(true);
+        //callback.sendPluginResult(result1);
         break;
       case TurnBasedMatch.MATCH_TURN_STATUS_INVITED:
         android.widget.Toast.makeText(
@@ -601,13 +511,45 @@ int finalscore=0;
           "Still waiting for i"
           , Toast.LENGTH_SHORT)
           .show();
-        //showWarning("Good inititative!",
-          //"Still waiting for invitations.\n\nBe patient!");
+
     }
     mTurnData = null;
-   // setViewVisibility();
+
   }
 
+  public String getNextParticipantId() {
+
+    String myParticipantId = mMatch.getParticipantId(mPlayerId);
+    ArrayList<String> participantIds = mMatch.getParticipantIds();
+    int desiredIndex = -1;
+    for (int i = 0; i < participantIds.size(); i++) {
+      if (participantIds.get(i).equals(myParticipantId)) {
+        desiredIndex = i + 1;
+      }
+    }
+    if (desiredIndex < participantIds.size()) {
+      return participantIds.get(desiredIndex);
+    }
+    if (mMatch.getAvailableAutoMatchSlots() <= 0) {
+      // You've run out of automatch slots, so we start over.
+      return participantIds.get(0);
+    } else {
+      return null;
+    }
+  }
+
+
+  public void rematch() {
+    mTurnBasedMultiplayerClient.rematch(mMatch.getMatchId())
+      .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
+        @Override
+        public void onSuccess(TurnBasedMatch turnBasedMatch) {
+          onInitiateMatch(turnBasedMatch);
+        }
+      })
+      .addOnFailureListener(createFailureListener("There was a problem starting a rematch!"));
+    mMatch = null;
+  }
 
 
 
@@ -696,8 +638,6 @@ int finalscore=0;
 
   private InvitationCallback mInvitationCallback = new InvitationCallback() {
 
-
-    // Handle notification events.
     @Override
     public void onInvitationReceived(@NonNull Invitation invitation) {
       android.widget.Toast.makeText(
@@ -750,24 +690,13 @@ int finalscore=0;
             onConnected(account);
 
           } catch (ApiException apiException) {
-            String message = apiException.getMessage();
-            if (message == null || message.isEmpty()) {
-           //   message = getString(R.string.signin_other_error);
-            }
-
-           // onDisconnected();
-
-            new AlertDialog.Builder(cordova.getActivity())
-              .setMessage(message)
-              .setNeutralButton(android.R.string.ok, null)
-              .show();
+           //todo
           }
         }else if (requestCode == RC_LOOK_AT_MATCHES) {
           // Returning from the 'Select Match' dialog
 
           if (resultCode != Activity.RESULT_OK) {
-            //logBadActivityResult(requestCode, resultCode,
-            //  "User cancelled returning from the 'Select Match' dialog.");
+
             return;
           }
 
@@ -780,7 +709,6 @@ int finalscore=0;
 
 
         }else if (requestCode == RC_SELECT_PLAYERS) {
-          // Returning from 'Select players to Invite' dialog
 
           if (resultCode != Activity.RESULT_OK) {
             // user canceled

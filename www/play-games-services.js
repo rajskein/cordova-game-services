@@ -1,11 +1,9 @@
 cordova.define("cordova-games-services.PlayGamesServices", function(require, exports, module) {
 var exec = require('cordova/exec');
 var PLAY_GAMES_SERVICES = 'PlayGamesServices';
-
 var PlayGamesServices = function () {
     this.name = PLAY_GAMES_SERVICES;
 };
-
 var actions = ['signIn', 'signOut', 'isSignedIn','startMatch','checkMatch','playMatch','reMatch','finishMatch','cancelMatch','leaveMatch',
                 'autoMatch', 'showAchievements', 'showLeaderBoard','submitScore'];
 
@@ -20,7 +18,6 @@ actions.forEach(function (action) {
             };
 
         if (typeof data === 'function') {
-            // Assume providing successCallback as 1st arg and possibly failureCallback as 2nd arg
             failure = success || defaultFailureCallback;
             success = data;
             data = {};
