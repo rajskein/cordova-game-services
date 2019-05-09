@@ -1,4 +1,3 @@
-cordova.define("cordova-games-services.PlayGamesServices", function(require, exports, module) {
 var exec = require('cordova/exec');
 var PLAY_GAMES_SERVICES = 'PlayGamesServices';
 var PlayGamesServices = function () {
@@ -32,5 +31,4 @@ actions.forEach(function (action) {
 });
 
 module.exports = new PlayGamesServices();
-});
 

@@ -54,5 +54,7 @@
         <source-file src="src/com/skein/cordova/plugins/BaseGameActivity.java" target-dir="src/com/skein/cordova/plugins/" />
         <source-file src="src/com/skein/cordova/plugins/GameHelper.java" target-dir="src/com/skein/cordova/plugins/" />
         <source-file src="src/com/skein/cordova/plugins/GameHelperUtils.java" target-dir="src/com/skein/cordova/plugins/" />
+        <source-file src="src/com/skein/cordova/plugins/GameTurn.java" target-dir="src/com/skein/cordova/plugins/" />
+
      </platform>
 </plugin>
