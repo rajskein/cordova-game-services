@@ -1,6 +1,8 @@
 package com.skein.cordova.plugins;
 
 import android.util.Log;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
@@ -12,6 +14,10 @@ public class GameTurn {
 
   public JSONObject data;
   public int turnCounter;
+  public String cPlayer;
+  public JSONArray p_1;
+  public JSONArray p_2;
+
 
   public GameTurn() {
   }
@@ -23,6 +29,19 @@ public class GameTurn {
     try {
       retVal.put("data", data);
       retVal.put("turnCounter", turnCounter);
+      retVal.put("cPlayer", cPlayer);
+      if(p_1 != null) {
+        retVal.put("p_1", p_1);
+      }else{
+        p_1=new JSONArray();
+        retVal.put("p_1", p_1);
+      }
+      if(p_2 != null) {
+        retVal.put("p_2", p_2);
+      }else{
+        p_2=new JSONArray();
+        retVal.put("p_2", p_2);
+      }
 
     } catch (JSONException e) {
       Log.e("Turn", "There was an issue writing JSON!", e);
@@ -63,6 +82,15 @@ public class GameTurn {
       }
       if (obj.has("turnCounter")) {
         retVal.turnCounter = obj.getInt("turnCounter");
+      }
+      if (obj.has("cPlayer")) {
+        retVal.cPlayer = obj.getString("cPlayer");
+      }
+      if (obj.has("turnCounter")) {
+        retVal.p_1 = obj.getJSONArray("p_1");
+      }
+      if (obj.has("turnCounter")) {
+        retVal.p_2= obj.getJSONArray("p_2");
       }
 
     } catch (JSONException e) {
