@@ -256,12 +256,18 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
 
   private void executeReMatch(final CallbackContext callbackContext) {
     Log.d(LOGTAG, "executeReMatch");
+    Log.d(LOGTAG, "executeReMatch"+mMatch.getMatchId());
+    Log.d(LOGTAG, "executeReMatch"+mMatch.getStatus());
+
     mTurnBasedMultiplayerClient.rematch(mMatch.getMatchId())
       .addOnSuccessListener(new OnSuccessListener<TurnBasedMatch>() {
         @Override
         public void onSuccess(TurnBasedMatch turnBasedMatch) {
-          onInitiateMatch(turnBasedMatch);
           Log.d(LOGTAG,"rematch Done"+turnBasedMatch);
+          PluginResult result = new PluginResult(PluginResult.Status.OK,"reMatch");
+          result.setKeepCallback(true);
+          callback.sendPluginResult(result);
+          onInitiateMatch(turnBasedMatch);
 
         }
       })
@@ -278,6 +284,8 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
         @Override
         public void onSuccess(String matchId) {
           Log.d(LOGTAG,"matchId Cacnel"+matchId);
+          PluginResult result = new PluginResult(PluginResult.Status.OK,"cancelled");
+          callback.sendPluginResult(result);
         }
       })
       .addOnFailureListener(createFailureListener("There was a problem cancelling the match!"));
@@ -316,8 +324,8 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
 
   }
   public void executeSubmitScore(final JSONObject options,final CallbackContext callbackContext) {
-    Log.d(LOGTAG, "executeSubmitScore");
-    int finalscore=0;
+    Log.d(LOGTAG, " final executeSubmitScore");
+    int finalscore=10;
     try {
       finalscore = options.getInt("data") ;
     } catch (JSONException e) {
@@ -339,9 +347,10 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
               Log.d(LOGTAG, "LeaderBoard: " + Long.toString(score));
             } else {
               Log.d(LOGTAG, "LeaderBoard: .get() is null");
+              mLeaderboardsClient.submitScore("CgkIut_irrQWEAIQAw", finalScore);
+
             }
           } else {
-            Toast.makeText(cordova.getActivity(), "no data...", Toast.LENGTH_SHORT).show();
             Log.d(LOGTAG, "LeaderBoard: " + Long.toString(score));
           }
         }
@@ -460,12 +469,6 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
           showWarning("Complete!",
             "This game is over; someone finished it, and so did you!  " +
               "There is nothing to be done.");
-          android.widget.Toast.makeText(
-            cordova.getActivity(),
-            "This game is over; someone finished it, and so did you!  \" +\n" +
-              "              \"There is nothing to be done."
-            , Toast.LENGTH_SHORT)
-            .show();
           PluginResult result1 = new PluginResult(PluginResult.Status.OK,"completed");
           result1.setKeepCallback(true);
           callback.sendPluginResult(result1);
@@ -660,11 +663,7 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
   private TurnBasedMatchUpdateCallback mMatchUpdateCallback = new TurnBasedMatchUpdateCallback() {
     @Override
     public void onTurnBasedMatchReceived(@NonNull TurnBasedMatch turnBasedMatch) {
-      android.widget.Toast.makeText(
-        cordova.getActivity(),
-        "A match was updated 1123."
-        , Toast.LENGTH_SHORT)
-        .show();
+
       updateMatch(turnBasedMatch);
     }
 
@@ -723,8 +722,8 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
           // get automatch criteria
           Bundle autoMatchCriteria;
 
-          int minAutoMatchPlayers = intent.getIntExtra(Multiplayer.EXTRA_MIN_AUTOMATCH_PLAYERS, 0);
-          int maxAutoMatchPlayers = intent.getIntExtra(Multiplayer.EXTRA_MAX_AUTOMATCH_PLAYERS, 0);
+          int minAutoMatchPlayers = intent.getIntExtra(Multiplayer.EXTRA_MIN_AUTOMATCH_PLAYERS, 1);
+          int maxAutoMatchPlayers = intent.getIntExtra(Multiplayer.EXTRA_MAX_AUTOMATCH_PLAYERS, 1);
 
           if (minAutoMatchPlayers > 0) {
             autoMatchCriteria = RoomConfig.createAutoMatchCriteria(minAutoMatchPlayers,
@@ -765,7 +764,9 @@ public class PlayGamesServices extends CordovaPlugin implements GameHelperListen
     return new OnFailureListener() {
       @Override
       public void onFailure(@NonNull Exception e) {
-       // handleException(e, string);
+        Log.e(LOGTAG, "==== options\n" + string);
+
+        // handleException(e, string);
       }
     };
   }
